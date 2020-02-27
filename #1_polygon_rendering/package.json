@@ -1,0 +1,19 @@
+{
+  "name": "webgl_learning",
+  "version": "1.0.0",
+  "description": "WebGL_Learning ==============",
+  "main": "minMatrix.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/minimo/WebGL_Learning.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/minimo/WebGL_Learning/issues"
+  },
+  "homepage": "https://github.com/minimo/WebGL_Learning#readme"
+}
