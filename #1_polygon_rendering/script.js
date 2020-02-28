@@ -17,7 +17,7 @@ onload = function(){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
     // 頂点シェーダとフラグメントシェーダの生成
-    var v_shader = create_shader('vs');
+    var v_shader = create_shader('vs2');
     var f_shader = create_shader('fs');
     
     // プログラムオブジェクトの生成とリンク
