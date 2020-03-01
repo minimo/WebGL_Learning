@@ -6,6 +6,21 @@ phina.namespace(function() {
     init: function(options) {
       this.superInit();
       this.setup();
+
+      this.backgroundColor = "blue";
+
+      const label = Label({
+        text: "test",
+        color: "black"
+      }).addChildTo(this)
+    },
+
+    _render: function() {
+      this.renderer.render(this);
+
+      const glCanvas = phina_app.glCanvas;
+      const dest = this.canvas.domElement.getContext('2d');
+      dest.drawImage(glCanvas, 0, 0);
     },
 
     setup: function() {
@@ -183,10 +198,6 @@ phina.namespace(function() {
       // 生成した VBO を返して終了
       return vbo;
     },
-
-    update: function() {
-    },
-
   });
 
 });
