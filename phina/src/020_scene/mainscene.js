@@ -5,26 +5,28 @@ phina.namespace(function() {
 
     init: function(options) {
       this.superInit();
-      this.setup();
 
       this.backgroundColor = "blue";
 
-      const label = Label({
-        text: "test",
-        color: "black"
-      }).addChildTo(this)
-    },
+      const glLayer = glCanvasLayer(phina_app.glCanvas)
+        .setPosition(SCREEN_WIDTH_HALF, SCREEN_HEIGHT_HALF)
+        .addChildTo(this);
 
-    _render: function() {
-      this.renderer.render(this);
+      // const canvas = glCanvas(phina_app.glCanvas);
+      // Sprite(canvas, 300, 300)
+      //   .setPosition(100, 100)
+      //   .setScale(0.2, 0.2)
+      //   .addChildTo(this);
 
-      const glCanvas = phina_app.glCanvas;
-      const dest = this.canvas.domElement.getContext('2d');
-      dest.drawImage(glCanvas, 0, 0);
+      Label({ text: "test", fill: "white" })
+        .setPosition(SCREEN_WIDTH_HALF, SCREEN_HEIGHT_HALF)
+        .addChildTo(this)
+
+      this.setup();
     },
 
     setup: function() {
-      const gl = phina.gl;
+      const gl = phina_app.gl;
 
       const vs = phina.asset.AssetManager.get('text', 'vs').data;
       const fs = phina.asset.AssetManager.get('text', 'fs').data;
@@ -120,7 +122,7 @@ phina.namespace(function() {
 
     // シェーダを生成する関数
     create_shader: function(type, data){
-      const gl = phina.gl;
+      const gl = phina_app.gl;
       // シェーダを格納する変数
       var shader;
       
@@ -157,7 +159,7 @@ phina.namespace(function() {
     
     // プログラムオブジェクトを生成しシェーダをリンクする関数
     create_program: function(vs, fs){
-      const gl = phina.gl;
+      const gl = phina_app.gl;
       // プログラムオブジェクトの生成
       var program = gl.createProgram();
       
@@ -182,7 +184,7 @@ phina.namespace(function() {
     
     // VBOを生成する関数
     create_vbo: function(data){
-      const gl = phina.gl;
+      const gl = phina_app.gl;
       // バッファオブジェクトの生成
       var vbo = gl.createBuffer();
       

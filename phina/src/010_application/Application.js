@@ -20,29 +20,10 @@ phina.namespace(function() {
         height: SCREEN_HEIGHT,
       });
 
-      this.glCanvas = document.getElementById('gl-canvas');
+      this.glCanvas = document.createElement('canvas');
       this.glCanvas.width = 300;
       this.glCanvas.height = 300;
-      phina.gl = this.glCanvas.getContext('webgl');
-    },
-
-    _draw: function() {
-      if (this.backgroundColor) {
-        this.canvas.clearColor(this.backgroundColor);
-      } else {
-        this.canvas.clear();
-      }
-
-      if (this.currentScene.canvas) {
-        this.currentScene._render();
-
-        this._scenes.each(function(scene) {
-          var c = scene.canvas;
-          if (c) {
-            this.canvas.context.drawImage(c.domElement, 0, 0, c.width, c.height);
-          }
-        }, this);
-      }
+      this.gl = this.glCanvas.getContext('webgl', { preserveDrawingBuffer: false });
     },
   });
   
