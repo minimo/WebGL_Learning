@@ -11,7 +11,6 @@ phina.namespace(function() {
         width: SCREEN_WIDTH,
         height: SCREEN_HEIGHT,
         fit: true,
-        query: "#world",
       });
   
       //シーンの幅、高さの基本を設定
