@@ -18,8 +18,8 @@ phina.namespace(function() {
       //   .setScale(0.2, 0.2)
       //   .addChildTo(this);
 
-      Label({ text: "test", fill: "white" })
-        .setPosition(SCREEN_WIDTH_HALF, SCREEN_HEIGHT_HALF)
+      Label({ text: "test", fill: "white", align: "left", baseline: "top" })
+        .setPosition(10, 10)
         .addChildTo(this)
 
       this.setup();

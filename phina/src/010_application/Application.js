@@ -21,9 +21,11 @@ phina.namespace(function() {
       });
 
       this.glCanvas = document.createElement('canvas');
-      this.glCanvas.width = 300;
-      this.glCanvas.height = 300;
-      this.gl = this.glCanvas.getContext('webgl', { preserveDrawingBuffer: false });
+      this.glCanvas.width = SCREEN_WIDTH;
+      this.glCanvas.height = SCREEN_HEIGHT;
+      this.gl = this.glCanvas.getContext('webgl', {
+        preserveDrawingBuffer: true,
+      });
     },
   });
   

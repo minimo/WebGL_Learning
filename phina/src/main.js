@@ -4,8 +4,8 @@
 
 phina.globalize();
 
-const SCREEN_WIDTH = 300;
-const SCREEN_HEIGHT = 300;
+const SCREEN_WIDTH = 512;
+const SCREEN_HEIGHT = 512;
 const SCREEN_WIDTH_HALF = SCREEN_WIDTH * 0.5;
 const SCREEN_HEIGHT_HALF = SCREEN_HEIGHT * 0.5;
 
