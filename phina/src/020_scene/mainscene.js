@@ -125,15 +125,17 @@ phina.namespace(function() {
       gl.activeTexture(gl.TEXTURE0);
       
       // テクスチャ用変数の宣言
-      const texture = null;
+      this.texture = null;
       
       // テクスチャを生成
+      this.isFinished = false;
       this.createTexture('assets/texture.png');
       
       // カウンタの宣言
       let count = 0;
 
       this.on('enterframe', () => {
+        if (!this.isFinished) return;
         // canvasを初期化
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clearDepth(1.0);
@@ -144,7 +146,7 @@ phina.namespace(function() {
         const rad = (count % 360) * Math.PI / 180;
         
         // テクスチャをバインドする
-        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
         
         // uniform変数にテクスチャを登録
         gl.uniform1i(uniLocation[1], 0);
@@ -385,7 +387,7 @@ phina.namespace(function() {
       var img = new Image();
       
       // データのオンロードをトリガーにする
-      img.onload = function(){
+      img.onload = () => {
         // テクスチャオブジェクトの生成
         var tex = gl.createTexture();
         
@@ -402,7 +404,11 @@ phina.namespace(function() {
         gl.bindTexture(gl.TEXTURE_2D, null);
         
         // 生成したテクスチャをグローバル変数に代入
-        texture = tex;
+        this.texture = tex;
+
+        this.isFinished = true;
+
+        console.log("texture load finished.")
       };
       
       // イメージオブジェクトのソースを指定
