@@ -16,6 +16,7 @@ let phina_app;
 
 window.onload = function() {
   phina_app = Application();
+  phina_app.enableStats();
   phina_app.replaceScene(FirstSceneFlow({}));
   phina_app.run();
 };
