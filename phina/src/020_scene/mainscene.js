@@ -60,33 +60,23 @@ phina.namespace(function() {
       attStride[2] = 4;
       
       // トーラスの頂点データを生成
-      const torusData = this.createTorus(32, 32, 1.0, 2.0);
-      const position = torusData[0];
-      const normal = torusData[1];
-      const color = torusData[2];
-      const index = torusData[3];
-      
-      // VBOの生成
-      const position_vbo = this.createVbo(position);
-      const normal_vbo = this.createVbo(normal);
-      const color_vbo = this.createVbo(color);
+      const torus = this.createTorus(32, 32, 1.0, 2.0);
+      const torusVBO = [this.createVbo(torus.position), this.createVbo(torus.normal), this.createVbo(torus.color)];
+      const torusIBO = this.createIbo(torus.index);
+    
+      // 球体の頂点データを生成
+      const sphere = this.createSphere(64, 64, 2.0, [0.25, 0.25, 0.75, 1.0]);
+      const sphereVBO = [this.createVbo(sphere.position), this.createVbo(sphere.normal), this.createVbo(sphere.color)];
+      const sphereIBO = this.createIbo(sphere.index);
 
-      // VBO を登録する
-      this.setAttribute([position_vbo, normal_vbo, color_vbo], attLocation, attStride);
-      
-      // IBOの生成
-      const ibo = this.createIbo(index);
-      
-      // IBOをバインドして登録する
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
-      
       // uniformLocationを配列に取得
       const uniLocation = new Array();
       uniLocation[0] = gl.getUniformLocation(prg, 'mvpMatrix');
-      uniLocation[1] = gl.getUniformLocation(prg, 'invMatrix');
-      uniLocation[2] = gl.getUniformLocation(prg, 'lightDirection'); 
-      uniLocation[3] = gl.getUniformLocation(prg, 'eyeDirection'); 
-      uniLocation[4] = gl.getUniformLocation(prg, 'ambientColor'); 
+      uniLocation[1] = gl.getUniformLocation(prg, 'mMatrix');
+      uniLocation[2] = gl.getUniformLocation(prg, 'invMatrix');
+      uniLocation[3] = gl.getUniformLocation(prg, 'lightPosition');
+      uniLocation[4] = gl.getUniformLocation(prg, 'eyeDirection');
+      uniLocation[5] = gl.getUniformLocation(prg, 'ambientColor');
 
       // minMatrix.js を用いた行列関連処理
       // matIVオブジェクトを生成
@@ -101,7 +91,7 @@ phina.namespace(function() {
       const invMatrix = m.identity(m.create());
 
       //並行光源の向き
-      const lightDirection = [-0.5, 0.5, 0.5];
+      const lightPosition = [0.0, 0.0, 0.0];
 
       //視点ベクトル
       const eyeDirection = [0.0, 0.0, 20.0];
@@ -132,23 +122,53 @@ phina.namespace(function() {
         count++;
         
         // カウンタを元にラジアンを算出
-        var rad = (count % 360) * Math.PI / 180;
-        
+        const rad = (count % 360) * Math.PI / 180;
+        const tx = Math.cos(rad) * 5.5;
+        const ty = Math.sin(rad) * 5.5;
+        const tz = Math.sin(rad) * 5.5;
+
+        //トーラスの描画情報と登録
+        this.setAttribute(torusVBO, attLocation, attStride);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, torusIBO);
+
         // モデル座標変換行列の生成
         m.identity(mMatrix);
+        m.translate(mMatrix, [tx, -ty, -tz], mMatrix);
         m.rotate(mMatrix, rad, [0, 1, 1], mMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
         m.inverse(mMatrix, invMatrix);
 
         // uniform変数の登録
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation[1], false, invMatrix);
-        gl.uniform3fv(uniLocation[2], lightDirection);
-        gl.uniform3fv(uniLocation[3], eyeDirection);
-        gl.uniform4fv(uniLocation[4], ambientColor);
+        gl.uniformMatrix4fv(uniLocation[1], false, mMatrix);
+        gl.uniformMatrix4fv(uniLocation[2], false, invMatrix);
+        gl.uniform3fv(uniLocation[3], lightPosition);
+        gl.uniform3fv(uniLocation[4], eyeDirection);
+        gl.uniform4fv(uniLocation[5], ambientColor);
 
-        gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
+        gl.drawElements(gl.TRIANGLES, torus.index.length, gl.UNSIGNED_SHORT, 0);
         
+        //球体の描画情報と登録
+        this.setAttribute(sphereVBO, attLocation, attStride);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereIBO);
+
+        // モデル座標変換行列の生成
+        m.identity(mMatrix);
+        m.translate(mMatrix, [-tx, ty, tz], mMatrix);
+        m.rotate(mMatrix, rad, [0, 1, 1], mMatrix);
+        m.multiply(tmpMatrix, mMatrix, mvpMatrix);
+        m.inverse(mMatrix, invMatrix);
+
+        // uniform変数の登録
+        gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
+        gl.uniformMatrix4fv(uniLocation[1], false, mMatrix);
+        gl.uniformMatrix4fv(uniLocation[2], false, invMatrix);
+        gl.uniform3fv(uniLocation[3], lightPosition);
+        gl.uniform3fv(uniLocation[4], eyeDirection);
+        gl.uniform4fv(uniLocation[5], ambientColor);
+
+        gl.drawElements(gl.TRIANGLES, sphere.index.length, gl.UNSIGNED_SHORT, 0);
+
         // コンテキストの再描画
         gl.flush();
       })
@@ -318,7 +338,12 @@ phina.namespace(function() {
           idx.push(r + column + 1, r + column + 2, r + 1);
         }
       }
-      return [pos, nor, col, idx];
+      return {
+        position : pos,
+        normal : nor,
+        color : col,
+        index : idx
+      };
     },
 
     createSphere: function(row, column, rad, color) {
