@@ -102,7 +102,8 @@ phina.namespace(function() {
       // uniformLocationを配列に取得
       const uniLocation = new Array();
       uniLocation[0]  = gl.getUniformLocation(prg, 'mvpMatrix');
-      uniLocation[1]  = gl.getUniformLocation(prg, 'texture');
+      uniLocation[1]  = gl.getUniformLocation(prg, 'texture0');
+      uniLocation[2]  = gl.getUniformLocation(prg, 'texture1');
       
       // 各種行列の生成と初期化
       const m = new matIV();
@@ -120,22 +121,18 @@ phina.namespace(function() {
       // 深度テストを有効にする
       gl.enable(gl.DEPTH_TEST);
       gl.depthFunc(gl.LEQUAL);
-      
-      // 有効にするテクスチャユニットを指定
-      gl.activeTexture(gl.TEXTURE0);
-      
+            
       // テクスチャ用変数の宣言
-      this.texture = null;
+      this.texture = [];
       
       // テクスチャを生成
-      this.isFinished = false;
-      this.createTexture('assets/texture.png');
+      this.createTexture('assets/texture0.png', 0);
+      this.createTexture('assets/texture1.png', 1);
       
       // カウンタの宣言
       let count = 0;
 
       this.on('enterframe', () => {
-        if (!this.isFinished) return;
         // canvasを初期化
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clearDepth(1.0);
@@ -146,8 +143,14 @@ phina.namespace(function() {
         const rad = (count % 360) * Math.PI / 180;
         
         // テクスチャをバインドする
-        gl.bindTexture(gl.TEXTURE_2D, this.texture);
-        
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.texture[0]);
+        gl.uniform1i(uniLocation[1], 0);
+
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, this.texture[1]);
+        gl.uniform1i(uniLocation[2], 1);
+                
         // uniform変数にテクスチャを登録
         gl.uniform1i(uniLocation[1], 0);
         
@@ -381,7 +384,7 @@ phina.namespace(function() {
     },
   
     // テクスチャを生成する関数
-	  createTexture: function(source){
+	  createTexture: function(source, num){
       const gl = phina_app.gl;
       // イメージオブジェクトの生成
       var img = new Image();
@@ -404,9 +407,7 @@ phina.namespace(function() {
         gl.bindTexture(gl.TEXTURE_2D, null);
         
         // 生成したテクスチャをグローバル変数に代入
-        this.texture = tex;
-
-        this.isFinished = true;
+        this.texture[num] = tex;
 
         console.log("texture load finished.")
       };
