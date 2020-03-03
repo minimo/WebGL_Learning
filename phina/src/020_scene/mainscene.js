@@ -377,7 +377,8 @@ phina.namespace(function() {
         index : idx
       };
     },
-	// テクスチャを生成する関数
+  
+    // テクスチャを生成する関数
 	  createTexture: function(source){
       const gl = phina_app.gl;
       // イメージオブジェクトの生成
