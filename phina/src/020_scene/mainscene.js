@@ -48,69 +48,90 @@ phina.namespace(function() {
       const prg = this.createProgram(v_shader, f_shader);
       
       // attributeLocationを配列に取得
-      const attLocation = new Array(3);
+      const attLocation = new Array();
       attLocation[0] = gl.getAttribLocation(prg, 'position');
-      attLocation[1] = gl.getAttribLocation(prg, 'normal');
-      attLocation[2] = gl.getAttribLocation(prg, 'color');
-      
+      attLocation[1] = gl.getAttribLocation(prg, 'color');
+      attLocation[2] = gl.getAttribLocation(prg, 'textureCoord');
+
       // attributeの要素数を配列に格納
-      const attStride = new Array(3);
+      const attStride = new Array();
       attStride[0] = 3;
-      attStride[1] = 3;
-      attStride[2] = 4;
-      
-      // トーラスの頂点データを生成
-      const torus = this.createTorus(32, 32, 1.0, 2.0);
-      const torusVBO = [this.createVbo(torus.position), this.createVbo(torus.normal), this.createVbo(torus.color)];
-      const torusIBO = this.createIbo(torus.index);
-    
-      // 球体の頂点データを生成
-      const sphere = this.createSphere(64, 64, 2.0, [0.25, 0.25, 0.75, 1.0]);
-      const sphereVBO = [this.createVbo(sphere.position), this.createVbo(sphere.normal), this.createVbo(sphere.color)];
-      const sphereIBO = this.createIbo(sphere.index);
+      attStride[1] = 4;
+      attStride[2] = 2;
+
+      // 頂点の位置
+      const position = [
+        -1.0,  1.0,  0.0,
+         1.0,  1.0,  0.0,
+        -1.0, -1.0,  0.0,
+         1.0, -1.0,  0.0
+      ];
+
+      // 頂点色
+      const color = [
+        1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0
+      ];
+
+      // テクスチャ座標
+      const textureCoord = [
+        0.0, 0.0,
+        1.0, 0.0,
+        0.0, 1.0,
+        1.0, 1.0
+      ];
+
+      // 頂点インデックス
+      const index = [
+        0, 1, 2,
+        3, 2, 1
+      ];
+      // VBOとIBOの生成
+      const vPosition     = this.createVbo(position);
+      const vColor        = this.createVbo(color);
+      const vTextureCoord = this.createVbo(textureCoord);
+      const VBOList       = [vPosition, vColor, vTextureCoord];
+      const iIndex        = this.createIbo(index);
+
+      // VBOとIBOの登録
+      this.setAttribute(VBOList, attLocation, attStride);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, iIndex);
 
       // uniformLocationを配列に取得
       const uniLocation = new Array();
-      uniLocation[0] = gl.getUniformLocation(prg, 'mvpMatrix');
-      uniLocation[1] = gl.getUniformLocation(prg, 'mMatrix');
-      uniLocation[2] = gl.getUniformLocation(prg, 'invMatrix');
-      uniLocation[3] = gl.getUniformLocation(prg, 'lightPosition');
-      uniLocation[4] = gl.getUniformLocation(prg, 'eyeDirection');
-      uniLocation[5] = gl.getUniformLocation(prg, 'ambientColor');
-
-      // minMatrix.js を用いた行列関連処理
-      // matIVオブジェクトを生成
-      const m = new matIV();
+      uniLocation[0]  = gl.getUniformLocation(prg, 'mvpMatrix');
+      uniLocation[1]  = gl.getUniformLocation(prg, 'texture');
       
       // 各種行列の生成と初期化
-      const mMatrix = m.identity(m.create());
-      const vMatrix = m.identity(m.create());
-      const pMatrix = m.identity(m.create());
+      const m = new matIV();
+      const mMatrix   = m.identity(m.create());
+      const vMatrix   = m.identity(m.create());
+      const pMatrix   = m.identity(m.create());
       const tmpMatrix = m.identity(m.create());
       const mvpMatrix = m.identity(m.create());
-      const invMatrix = m.identity(m.create());
-
-      //並行光源の向き
-      const lightPosition = [0.0, 0.0, 0.0];
-
-      //視点ベクトル
-      const eyeDirection = [0.0, 0.0, 20.0];
-
-      //環境光色
-      const ambientColor = [0.1, 0.1, 0.1, 1.0];
-
+      
       // ビュー×プロジェクション座標変換行列
-      m.lookAt([0.0, 0.0, 30.0], [0, 0, 0], [0, 1, 0], vMatrix);
+      m.lookAt([0.0, 2.0, 5.0], [0, 0, 0], [0, 1, 0], vMatrix);
       m.perspective(45, this.width / this.height, 0.1, 100, pMatrix);
       m.multiply(pMatrix, vMatrix, tmpMatrix);
       
-      // カウンタの宣言
-      let count = 0;
-      
-      // カリングと深度テストを有効にする
+      // 深度テストを有効にする
       gl.enable(gl.DEPTH_TEST);
       gl.depthFunc(gl.LEQUAL);
-      gl.enable(gl.CULL_FACE);
+      
+      // 有効にするテクスチャユニットを指定
+      gl.activeTexture(gl.TEXTURE0);
+      
+      // テクスチャ用変数の宣言
+      const texture = null;
+      
+      // テクスチャを生成
+      this.createTexture('assets/texture.png');
+      
+      // カウンタの宣言
+      let count = 0;
 
       this.on('enterframe', () => {
         // canvasを初期化
@@ -118,57 +139,25 @@ phina.namespace(function() {
         gl.clearDepth(1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         
-        // カウンタをインクリメントする
-        count++;
-        
         // カウンタを元にラジアンを算出
+        count++;
         const rad = (count % 360) * Math.PI / 180;
-        const tx = Math.cos(rad) * 5.5;
-        const ty = Math.sin(rad) * 5.5;
-        const tz = Math.sin(rad) * 5.5;
-
-        //トーラスの描画情報と登録
-        this.setAttribute(torusVBO, attLocation, attStride);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, torusIBO);
-
-        // モデル座標変換行列の生成
-        m.identity(mMatrix);
-        m.translate(mMatrix, [tx, -ty, -tz], mMatrix);
-        m.rotate(mMatrix, rad, [0, 1, 1], mMatrix);
-        m.multiply(tmpMatrix, mMatrix, mvpMatrix);
-        m.inverse(mMatrix, invMatrix);
-
-        // uniform変数の登録
-        gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation[1], false, mMatrix);
-        gl.uniformMatrix4fv(uniLocation[2], false, invMatrix);
-        gl.uniform3fv(uniLocation[3], lightPosition);
-        gl.uniform3fv(uniLocation[4], eyeDirection);
-        gl.uniform4fv(uniLocation[5], ambientColor);
-
-        gl.drawElements(gl.TRIANGLES, torus.index.length, gl.UNSIGNED_SHORT, 0);
         
-        //球体の描画情報と登録
-        this.setAttribute(sphereVBO, attLocation, attStride);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereIBO);
-
+        // テクスチャをバインドする
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        
+        // uniform変数にテクスチャを登録
+        gl.uniform1i(uniLocation[1], 0);
+        
         // モデル座標変換行列の生成
         m.identity(mMatrix);
-        m.translate(mMatrix, [-tx, ty, tz], mMatrix);
-        m.rotate(mMatrix, rad, [0, 1, 1], mMatrix);
+        m.rotate(mMatrix, rad, [0, 1, 0], mMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
-        m.inverse(mMatrix, invMatrix);
-
-        // uniform変数の登録
+        
+        // uniform変数の登録と描画
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation[1], false, mMatrix);
-        gl.uniformMatrix4fv(uniLocation[2], false, invMatrix);
-        gl.uniform3fv(uniLocation[3], lightPosition);
-        gl.uniform3fv(uniLocation[4], eyeDirection);
-        gl.uniform4fv(uniLocation[5], ambientColor);
-
-        gl.drawElements(gl.TRIANGLES, sphere.index.length, gl.UNSIGNED_SHORT, 0);
-
+        gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
+        
         // コンテキストの再描画
         gl.flush();
       })
@@ -388,6 +377,36 @@ phina.namespace(function() {
         index : idx
       };
     },
+	// テクスチャを生成する関数
+	  createTexture: function(source){
+      const gl = phina_app.gl;
+      // イメージオブジェクトの生成
+      var img = new Image();
+      
+      // データのオンロードをトリガーにする
+      img.onload = function(){
+        // テクスチャオブジェクトの生成
+        var tex = gl.createTexture();
+        
+        // テクスチャをバインドする
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        
+        // テクスチャへイメージを適用
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        
+        // ミップマップを生成
+        gl.generateMipmap(gl.TEXTURE_2D);
+        
+        // テクスチャのバインドを無効化
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        
+        // 生成したテクスチャをグローバル変数に代入
+        texture = tex;
+      };
+      
+      // イメージオブジェクトのソースを指定
+      img.src = source;
+    }
   });
 
 });
