@@ -133,6 +133,21 @@ phina.namespace(function() {
       let count = 0;
 
       this.on('enterframe', () => {
+        // ブレンドタイプを設定する関数
+        function blend_type(prm){
+          switch(prm){
+              // 透過処理
+              case 0:
+                  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                  break;
+              // 加算合成
+              case 1:
+                  gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+                  break;
+              default:
+                  break;
+          }
+        }
         // canvasを初期化
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clearDepth(1.0);
