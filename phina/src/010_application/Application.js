@@ -10,7 +10,7 @@ phina.namespace(function() {
         fps: 60,
         width: SCREEN_WIDTH,
         height: SCREEN_HEIGHT,
-        fit: true,
+        fit: false,
       });
   
       //シーンの幅、高さの基本を設定

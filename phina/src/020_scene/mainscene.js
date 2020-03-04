@@ -69,12 +69,12 @@ phina.namespace(function() {
 
       // 頂点色
       const color = [
-        1.0, 1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0, 1.0,
+        1.0, 0.0, 0.0, 1.0,
+        0.0, 1.0, 0.0, 1.0,
+        0.0, 0.0, 1.0, 1.0,
         1.0, 1.0, 1.0, 1.0
       ];
-
+    
       // テクスチャ座標
       const textureCoord = [
         0.0, 0.0,
@@ -102,9 +102,11 @@ phina.namespace(function() {
       // uniformLocationを配列に取得
       const uniLocation = new Array();
       uniLocation[0]  = gl.getUniformLocation(prg, 'mvpMatrix');
-      uniLocation[1]  = gl.getUniformLocation(prg, 'texture0');
-      uniLocation[2]  = gl.getUniformLocation(prg, 'texture1');
+      uniLocation[1]  = gl.getUniformLocation(prg, 'vertexAlpha');
+      uniLocation[2]  = gl.getUniformLocation(prg, 'texture');
+      uniLocation[3]  = gl.getUniformLocation(prg, 'useTexture');
       
+          
       // 各種行列の生成と初期化
       const m = new matIV();
       const mMatrix   = m.identity(m.create());
@@ -126,28 +128,21 @@ phina.namespace(function() {
       this.texture = [];
       
       // テクスチャを生成
-      this.createTexture('assets/texture0.png', 0);
-      this.createTexture('assets/texture1.png', 1);
-      
+      this.createTexture('assets/texture.png', 0);
+      gl.activeTexture(gl.TEXTURE0);
+
       // カウンタの宣言
       let count = 0;
 
+      // 各種エレメントへの参照を取得
+      const isElmTransparency = true;
+      const isElmAdd = false;
+      const vertexAlpha = 0.5;
+
       this.on('enterframe', () => {
-        // ブレンドタイプを設定する関数
-        function blend_type(prm){
-          switch(prm){
-              // 透過処理
-              case 0:
-                  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-                  break;
-              // 加算合成
-              case 1:
-                  gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-                  break;
-              default:
-                  break;
-          }
-        }
+        if(isElmTransparency) gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        if(isElmAdd) gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    
         // canvasを初期化
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clearDepth(1.0);
@@ -157,27 +152,43 @@ phina.namespace(function() {
         count++;
         const rad = (count % 360) * Math.PI / 180;
         
-        // テクスチャをバインドする
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.texture[0]);
-        gl.uniform1i(uniLocation[1], 0);
-
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, this.texture[1]);
-        gl.uniform1i(uniLocation[2], 1);
-                
-        // uniform変数にテクスチャを登録
-        gl.uniform1i(uniLocation[1], 0);
-        
-        // モデル座標変換行列の生成
         m.identity(mMatrix);
+        m.translate(mMatrix, [0.25, 0.25, -0.25], mMatrix);
         m.rotate(mMatrix, rad, [0, 1, 0], mMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
         
+        // テクスチャのバインド
+        gl.bindTexture(gl.TEXTURE_2D, this.texture[0]);
+        
+        // ブレンディングを無効にする
+        gl.disable(gl.BLEND);
+        
         // uniform変数の登録と描画
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
+        gl.uniform1f(uniLocation[1], 1.0);
+        gl.uniform1i(uniLocation[2], 0);
+        gl.uniform1i(uniLocation[3], true);
         gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
         
+        // モデル座標変換行列の生成
+        m.identity(mMatrix);
+        m.translate(mMatrix, [-0.25, -0.25, 0.25], mMatrix);
+        m.rotate(mMatrix, rad, [0, 0, 1], mMatrix);
+        m.multiply(tmpMatrix, mMatrix, mvpMatrix);
+        
+        // テクスチャのバインドを解除
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        
+        // ブレンディングを有効にする
+        gl.enable(gl.BLEND);
+        
+        // uniform変数の登録と描画
+        gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
+        gl.uniform1f(uniLocation[1], vertexAlpha);
+        gl.uniform1i(uniLocation[2], 0);
+        gl.uniform1i(uniLocation[3], false);
+        gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
+            
         // コンテキストの再描画
         gl.flush();
       })
