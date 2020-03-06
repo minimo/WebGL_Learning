@@ -68,30 +68,15 @@ phina.namespace(function() {
 
       // 点のVBO生成
       const pointSphere = this.createSphere(16, 16, 2.0);
-      const pPos = this.createVbo(pointSphere.point);
+      const pPos = this.createVbo(pointSphere.position);
       const pCol = this.createVbo(pointSphere.color);
       const pVBOList = [pPos, pCol];
 
-      // 頂点の位置
-      const position = [
-        -1.0,  1.0,  0.0,
-         1.0,  1.0,  0.0,
-        -1.0, -1.0,  0.0,
-         1.0, -1.0,  0.0
-      ];
-
-      // 線の頂点色
-      const color = [
-        1.0, 1.0, 1.0, 1.0,
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0
-      ];
-   
-      // VBOとIBOの生成
-      const vPosition     = this.createVbo(position);
-      const vColor        = this.createVbo(color);
-      const VBOList       = [vPosition, vColor];
+      // 線のVBOの生成
+      const plane = this.createPlane(1.0);
+      const lPosition     = this.createVbo(plane.position);
+      const lColor        = this.createVbo(plane.color);
+      const lVBOList       = [lPosition, lColor];
 
       // uniformLocationを配列に取得
       const uniLocation = new Array();
@@ -108,7 +93,6 @@ phina.namespace(function() {
       const pMatrix   = m.identity(m.create());
       const tmpMatrix = m.identity(m.create());
       const mvpMatrix = m.identity(m.create());
-      const qMatrix   = m.identity(m.create());
       
       // 深度テストを有効にする
       gl.enable(gl.DEPTH_TEST);
@@ -138,7 +122,7 @@ phina.namespace(function() {
         // クォータニオンを行列に適用
         const qMatrix = m.identity(m.create());
         q.toMatIV(qt, qMatrix);
-            
+
         // ビュー×プロジェクション座標変換行列
         const camPosition = [0.0, 5.0, 10.0];
         m.lookAt(camPosition, [0, 0, 0], [0, 1, 0], vMatrix);
@@ -171,14 +155,14 @@ phina.namespace(function() {
         if(eLineLoop) lineOption = gl.LINE_LOOP;
         
         // 線を描画
-        this.setAttribute(VBOList, attLocation, attStride);
+        this.setAttribute(lVBOList, attLocation, attStride);
         m.identity(mMatrix);
         m.rotate(mMatrix, Math.PI / 2, [1, 0, 0], mMatrix);
         m.scale(mMatrix, [3.0, 3.0, 1.0], mMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
         gl.uniform1i(uniLocation[3], false);
-        gl.drawArrays(lineOption, 0, position.length / 3);
+        gl.drawArrays(lineOption, 0, plane.position.length / 3);
         
         // コンテキストの再描画
         gl.flush();
@@ -298,6 +282,26 @@ phina.namespace(function() {
       
       // 生成したIBOを返して終了
       return ibo;
+    },
+
+    createPlane: function(size) {
+      // 頂点の位置
+      const position = [
+        -size,  size,  0.0,
+         size,  size,  0.0,
+        -size, -size,  0.0,
+         size, -size,  0.0
+      ];
+
+      // 線の頂点色
+      const color = [
+        1.0, 1.0, 1.0, 1.0,
+        1.0, 0.0, 0.0, 1.0,
+        0.0, 1.0, 0.0, 1.0,
+        0.0, 0.0, 1.0, 1.0
+      ];
+
+      return { position, color };
     },
 
     createTorus: function(row, column, irad, orad) {
