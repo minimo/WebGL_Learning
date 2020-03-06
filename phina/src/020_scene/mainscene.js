@@ -31,6 +31,15 @@ phina.namespace(function() {
       const vs = phina.asset.AssetManager.get('text', 'vs').data;
       const fs = phina.asset.AssetManager.get('text', 'fs').data;
 
+      // canvas とクォータニオンをグローバルに扱う
+      const q = new qtnIV();
+      const qt = q.identity(q.create());
+
+      const eLines     = true;
+      const eLineStrip = false;
+      const eLineLoop  = false;
+      const ePointSize = 32;
+    
       // canvasを初期化する色を設定する
       gl.clearColor(0.0, 0.0, 0.0, 1.0);
       
@@ -51,13 +60,17 @@ phina.namespace(function() {
       const attLocation = new Array();
       attLocation[0] = gl.getAttribLocation(prg, 'position');
       attLocation[1] = gl.getAttribLocation(prg, 'color');
-      attLocation[2] = gl.getAttribLocation(prg, 'textureCoord');
 
       // attributeの要素数を配列に格納
       const attStride = new Array();
       attStride[0] = 3;
       attStride[1] = 4;
-      attStride[2] = 2;
+
+      // 点のVBO生成
+      const pointSphere = this.createSphere(16, 16, 2.0);
+      const pPos = this.createVbo(pointSphere.point);
+      const pCol = this.createVbo(pointSphere.color);
+      const pVBOList = [pPos, pCol];
 
       // 頂点の位置
       const position = [
@@ -67,37 +80,18 @@ phina.namespace(function() {
          1.0, -1.0,  0.0
       ];
 
-      // 頂点色
+      // 線の頂点色
       const color = [
+        1.0, 1.0, 1.0, 1.0,
         1.0, 0.0, 0.0, 1.0,
         0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        1.0, 1.0, 1.0, 1.0
+        0.0, 0.0, 1.0, 1.0
       ];
-    
-      // テクスチャ座標
-      const textureCoord = [
-        0.0, 0.0,
-        1.0, 0.0,
-        0.0, 1.0,
-        1.0, 1.0
-      ];
-
-      // 頂点インデックス
-      const index = [
-        0, 1, 2,
-        3, 2, 1
-      ];
+   
       // VBOとIBOの生成
       const vPosition     = this.createVbo(position);
       const vColor        = this.createVbo(color);
-      const vTextureCoord = this.createVbo(textureCoord);
-      const VBOList       = [vPosition, vColor, vTextureCoord];
-      const iIndex        = this.createIbo(index);
-
-      // VBOとIBOの登録
-      this.setAttribute(VBOList, attLocation, attStride);
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, iIndex);
+      const VBOList       = [vPosition, vColor];
 
       // uniformLocationを配列に取得
       const uniLocation = new Array();
@@ -114,35 +108,24 @@ phina.namespace(function() {
       const pMatrix   = m.identity(m.create());
       const tmpMatrix = m.identity(m.create());
       const mvpMatrix = m.identity(m.create());
-      
-      // ビュー×プロジェクション座標変換行列
-      m.lookAt([0.0, 2.0, 5.0], [0, 0, 0], [0, 1, 0], vMatrix);
-      m.perspective(45, this.width / this.height, 0.1, 100, pMatrix);
-      m.multiply(pMatrix, vMatrix, tmpMatrix);
+      const qMatrix   = m.identity(m.create());
       
       // 深度テストを有効にする
       gl.enable(gl.DEPTH_TEST);
       gl.depthFunc(gl.LEQUAL);
-            
-      // テクスチャ用変数の宣言
-      this.texture = [];
-      
-      // テクスチャを生成
-      this.createTexture('assets/texture.png', 0);
-      gl.activeTexture(gl.TEXTURE0);
+      gl.enable(gl.BLEND);
+
+      // ブレンドファクター
+    	gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE);
 
       // カウンタの宣言
       let count = 0;
 
-      // 各種エレメントへの参照を取得
-      const isElmTransparency = true;
-      const isElmAdd = false;
-      const vertexAlpha = 0.5;
+      // テクスチャを生成
+      this.texture = [];
+      this.createTexture('assets/pointsprite_texture.png', 0);
 
       this.on('enterframe', () => {
-        if(isElmTransparency) gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        if(isElmAdd) gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-    
         // canvasを初期化
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clearDepth(1.0);
@@ -152,43 +135,51 @@ phina.namespace(function() {
         count++;
         const rad = (count % 360) * Math.PI / 180;
         
-        m.identity(mMatrix);
-        m.translate(mMatrix, [0.25, 0.25, -0.25], mMatrix);
-        m.rotate(mMatrix, rad, [0, 1, 0], mMatrix);
-        m.multiply(tmpMatrix, mMatrix, mvpMatrix);
+        // クォータニオンを行列に適用
+        const qMatrix = m.identity(m.create());
+        q.toMatIV(qt, qMatrix);
+            
+        // ビュー×プロジェクション座標変換行列
+        const camPosition = [0.0, 5.0, 10.0];
+        m.lookAt(camPosition, [0, 0, 0], [0, 1, 0], vMatrix);
+        m.multiply(vMatrix, qMatrix, vMatrix);
+        m.perspective(45, this.width / this.height, 0.1, 100, pMatrix);
+        m.multiply(pMatrix, vMatrix, tmpMatrix);
         
-        // テクスチャのバインド
+        // 点のサイズをエレメントから取得
+        const pointSize = ePointSize / 10;
+        
+        // ポイントスプライトに設定するテクスチャをバインド
+        gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.texture[0]);
         
-        // ブレンディングを無効にする
-        gl.disable(gl.BLEND);
-        
-        // uniform変数の登録と描画
+        // 点を描画
+        this.setAttribute(pVBOList, attLocation, attStride);
+        m.identity(mMatrix);
+        m.rotate(mMatrix, rad, [0, 1, 0], mMatrix);
+        m.multiply(tmpMatrix, mMatrix, mvpMatrix);
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
-        gl.uniform1f(uniLocation[1], 1.0);
+        gl.uniform1f(uniLocation[1], pointSize);
         gl.uniform1i(uniLocation[2], 0);
         gl.uniform1i(uniLocation[3], true);
-        gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
+        gl.drawArrays(gl.POINTS, 0, pointSphere.position.length / 3);
         
-        // モデル座標変換行列の生成
+        // 線タイプを判別
+        let lineOption = 0;
+        if(eLines) lineOption = gl.LINES;
+        if(eLineStrip) lineOption = gl.LINE_STRIP;
+        if(eLineLoop) lineOption = gl.LINE_LOOP;
+        
+        // 線を描画
+        this.setAttribute(VBOList, attLocation, attStride);
         m.identity(mMatrix);
-        m.translate(mMatrix, [-0.25, -0.25, 0.25], mMatrix);
-        m.rotate(mMatrix, rad, [0, 0, 1], mMatrix);
+        m.rotate(mMatrix, Math.PI / 2, [1, 0, 0], mMatrix);
+        m.scale(mMatrix, [3.0, 3.0, 1.0], mMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
-        
-        // テクスチャのバインドを解除
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        
-        // ブレンディングを有効にする
-        gl.enable(gl.BLEND);
-        
-        // uniform変数の登録と描画
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
-        gl.uniform1f(uniLocation[1], vertexAlpha);
-        gl.uniform1i(uniLocation[2], 0);
         gl.uniform1i(uniLocation[3], false);
-        gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
-            
+        gl.drawArrays(lineOption, 0, position.length / 3);
+        
         // コンテキストの再描画
         gl.flush();
       })
