@@ -59,33 +59,44 @@ phina.namespace(function() {
       // attributeLocationを配列に取得
       const attLocation = new Array();
       attLocation[0] = gl.getAttribLocation(prg, 'position');
-      attLocation[1] = gl.getAttribLocation(prg, 'color');
+      attLocation[1] = gl.getAttribLocation(prg, 'normal');
+      attLocation[2] = gl.getAttribLocation(prg, 'color');
+      attLocation[3] = gl.getAttribLocation(prg, 'textureCoord');
 
       // attributeの要素数を配列に格納
       const attStride = new Array();
       attStride[0] = 3;
-      attStride[1] = 4;
+      attStride[1] = 3;
+      attStride[2] = 4;
+      attStride[3] = 2;
+    
+      //VBO/IBO生成
+      const cubeData      = cube(2.0, [1.0, 1.0, 1.0, 1.0]);
+      const cPosition     = this.createVbo(cubeData.p);
+      const cNormal       = this.createVbo(cubeData.n);
+      const cColor        = this.createVbo(cubeData.c);
+      const cTextureCoord = this.createVbo(cubeData.t);
+      const cVBOList      = [cPosition, cNormal, cColor, cTextureCoord];
+      const cIndex        = this.createIbo(cubeData.i);              
 
-      // 点のVBO生成
-      const pointSphere = this.createSphere(16, 16, 2.0);
-      const pPos = this.createVbo(pointSphere.position);
-      const pCol = this.createVbo(pointSphere.color);
-      const pVBOList = [pPos, pCol];
-
-      // 線のVBOの生成
-      const plane = this.createPlane(1.0);
-      const lPosition     = this.createVbo(plane.position);
-      const lColor        = this.createVbo(plane.color);
-      const lVBOList       = [lPosition, lColor];
+      // 球体モデル
+      const earthData     = sphere(64, 64, 1.0, [1.0, 1.0, 1.0, 1.0]);
+      const ePosition     = this.createVbo(earthData.p);
+      const eNormal       = this.createVbo(earthData.n);
+      const eColor        = this.createVbo(earthData.c);
+      const eTextureCoord = this.createVbo(earthData.t);
+      const eVBOList      = [ePosition, eNormal, eColor, eTextureCoord];
+      const eIndex        = this.createIbo(earthData.i);
 
       // uniformLocationを配列に取得
       const uniLocation = new Array();
-      uniLocation[0]  = gl.getUniformLocation(prg, 'mvpMatrix');
-      uniLocation[1]  = gl.getUniformLocation(prg, 'pointSize');
-      uniLocation[2]  = gl.getUniformLocation(prg, 'texture');
-      uniLocation[3]  = gl.getUniformLocation(prg, 'useTexture');
-          
-          
+      uniLocation[0] = gl.getUniformLocation(prg, 'mMatrix');
+      uniLocation[1] = gl.getUniformLocation(prg, 'mvpMatrix');
+      uniLocation[2] = gl.getUniformLocation(prg, 'invMatrix');
+      uniLocation[3] = gl.getUniformLocation(prg, 'lightDirection');
+      uniLocation[4] = gl.getUniformLocation(prg, 'useLight');
+      uniLocation[5] = gl.getUniformLocation(prg, 'texture');
+
       // 各種行列の生成と初期化
       const m = new matIV();
       const mMatrix   = m.identity(m.create());
@@ -93,76 +104,112 @@ phina.namespace(function() {
       const pMatrix   = m.identity(m.create());
       const tmpMatrix = m.identity(m.create());
       const mvpMatrix = m.identity(m.create());
+      const invMatrix = m.identity(m.create());
       
       // 深度テストを有効にする
       gl.enable(gl.DEPTH_TEST);
       gl.depthFunc(gl.LEQUAL);
-      gl.enable(gl.BLEND);
-
-      // ブレンドファクター
-    	gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE);
-
-      // カウンタの宣言
-      let count = 0;
 
       // テクスチャを生成
       this.texture = [];
-      this.createTexture('assets/pointsprite_texture.png', 0);
+      this.createTexture('assets/texture2.png', 0);
+      this.createTexture('assets/texture3.png', 1);
+      gl.activeTexture(gl.TEXTURE0);
+      
+      // フレームバッファオブジェクトの取得
+      const fBufferWidth  = 512;
+      const fBufferHeight = 512;
+      const fBuffer = this.createFramebuffer(fBufferWidth, fBufferHeight);
+		
+      // カウンタの宣言
+      let count = 0;
 
       this.on('enterframe', () => {
-        // canvasを初期化
+        // カウンタをインクリメントする
+        count++;
+        
+        // カウンタを元にラジアンを算出
+        var rad  = (count % 360) * Math.PI / 180;
+        var rad2 = (count % 720) * Math.PI / 360;
+        
+        // フレームバッファをバインド
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fBuffer.f);
+        
+        // フレームバッファを初期化
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clearDepth(1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         
-        // カウンタを元にラジアンを算出
-        count++;
-        const rad = (count % 360) * Math.PI / 180;
+        // 地球用のVBOとIBOをセット
+        this.setAttribute(eVBOList, attLocation, attStride);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, eIndex);
         
-        // クォータニオンを行列に適用
-        const qMatrix = m.identity(m.create());
-        q.toMatIV(qt, qMatrix);
-
+        // ライト関連
+        var lightDirection = [-1.0, 2.0, 1.0];
+        
         // ビュー×プロジェクション座標変換行列
-        const camPosition = [0.0, 5.0, 10.0];
-        m.lookAt(camPosition, [0, 0, 0], [0, 1, 0], vMatrix);
-        m.multiply(vMatrix, qMatrix, vMatrix);
-        m.perspective(45, this.width / this.height, 0.1, 100, pMatrix);
+        m.lookAt([0.0, 0.0, 5.0], [0, 0, 0], [0, 1, 0], vMatrix);
+        m.perspective(45, fBufferWidth / fBufferHeight, 0.1, 100, pMatrix);
         m.multiply(pMatrix, vMatrix, tmpMatrix);
         
-        // 点のサイズをエレメントから取得
-        const pointSize = ePointSize / 10;
+        // 背景用球体をフレームバッファにレンダリング
+        gl.bindTexture(gl.TEXTURE_2D, this.texture[1]);
+        m.identity(mMatrix);
+        m.scale(mMatrix, [50.0, 50.0, 50.0], mMatrix);
+        m.multiply(tmpMatrix, mMatrix, mvpMatrix);
+        m.inverse(mMatrix, invMatrix);
+        gl.uniformMatrix4fv(uniLocation[0], false, mMatrix);
+        gl.uniformMatrix4fv(uniLocation[1], false, mvpMatrix);
+        gl.uniformMatrix4fv(uniLocation[2], false, invMatrix);
+        gl.uniform3fv(uniLocation[3], lightDirection);
+        gl.uniform1i(uniLocation[4], false);
+        gl.uniform1i(uniLocation[5], 0);
+        gl.drawElements(gl.TRIANGLES, earthData.i.length, gl.UNSIGNED_SHORT, 0);
         
-        // ポイントスプライトに設定するテクスチャをバインド
-        gl.activeTexture(gl.TEXTURE0);
+        // 地球本体をフレームバッファにレンダリング
         gl.bindTexture(gl.TEXTURE_2D, this.texture[0]);
-        
-        // 点を描画
-        this.setAttribute(pVBOList, attLocation, attStride);
         m.identity(mMatrix);
         m.rotate(mMatrix, rad, [0, 1, 0], mMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
-        gl.uniform1f(uniLocation[1], pointSize);
-        gl.uniform1i(uniLocation[2], 0);
-        gl.uniform1i(uniLocation[3], true);
-        gl.drawArrays(gl.POINTS, 0, pointSphere.position.length / 3);
+        m.inverse(mMatrix, invMatrix);
+        gl.uniformMatrix4fv(uniLocation[0], false, mMatrix);
+        gl.uniformMatrix4fv(uniLocation[1], false, mvpMatrix);
+        gl.uniformMatrix4fv(uniLocation[2], false, invMatrix);
+        gl.uniform1i(uniLocation[4], true);
+        gl.drawElements(gl.TRIANGLES, earthData.i.length, gl.UNSIGNED_SHORT, 0);
         
-        // 線タイプを判別
-        let lineOption = 0;
-        if(eLines) lineOption = gl.LINES;
-        if(eLineStrip) lineOption = gl.LINE_STRIP;
-        if(eLineLoop) lineOption = gl.LINE_LOOP;
+        // フレームバッファのバインドを解除
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         
-        // 線を描画
-        this.setAttribute(lVBOList, attLocation, attStride);
+        // canvasを初期化
+        gl.clearColor(0.0, 0.7, 0.7, 1.0);
+        gl.clearDepth(1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        
+        // キューブのVBOとIBOをセット
+        this.setAttribute(cVBOList, attLocation, attStride);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cIndex);
+        
+        // フレームバッファに描き込んだ内容をテクスチャとして適用
+        gl.bindTexture(gl.TEXTURE_2D, fBuffer.t);
+        
+        // ライト関連
+        lightDirection = [-1.0, 0.0, 0.0];
+        
+        // ビュー×プロジェクション座標変換行列
+        m.lookAt([0.0, 0.0, 5.0], [0, 0, 0], [0, 1, 0], vMatrix);
+        m.perspective(45, this.width / this.height, 0.1, 100, pMatrix);
+        m.multiply(pMatrix, vMatrix, tmpMatrix);
+        
+        // キューブをレンダリング
         m.identity(mMatrix);
-        m.rotate(mMatrix, Math.PI / 2, [1, 0, 0], mMatrix);
-        m.scale(mMatrix, [3.0, 3.0, 1.0], mMatrix);
+        m.rotate(mMatrix, rad2, [1, 1, 0], mMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
-        gl.uniform1i(uniLocation[3], false);
-        gl.drawArrays(lineOption, 0, plane.position.length / 3);
+        m.inverse(mMatrix, invMatrix);
+        gl.uniformMatrix4fv(uniLocation[0], false, mMatrix);
+        gl.uniformMatrix4fv(uniLocation[1], false, mvpMatrix);
+        gl.uniformMatrix4fv(uniLocation[2], false, invMatrix);
+        gl.drawElements(gl.TRIANGLES, cubeData.i.length, gl.UNSIGNED_SHORT, 0);
         
         // コンテキストの再描画
         gl.flush();
@@ -283,137 +330,17 @@ phina.namespace(function() {
       // 生成したIBOを返して終了
       return ibo;
     },
-
-    createPlane: function(size) {
-      // 頂点の位置
-      const position = [
-        -size,  size,  0.0,
-         size,  size,  0.0,
-        -size, -size,  0.0,
-         size, -size,  0.0
-      ];
-
-      // 線の頂点色
-      const color = [
-        1.0, 1.0, 1.0, 1.0,
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0
-      ];
-
-      return { position, color };
-    },
-
-    createTorus: function(row, column, irad, orad) {
-      function hsva(h, s, v, a){
-        if(s > 1 || v > 1 || a > 1){return;}
-        var th = h % 360;
-        var i = Math.floor(th / 60);
-        var f = th / 60 - i;
-        var m = v * (1 - s);
-        var n = v * (1 - s * f);
-        var k = v * (1 - s * (1 - f));
-        var color = new Array();
-        if(!s > 0 && !s < 0){
-          color.push(v, v, v, a); 
-        } else {
-          var r = new Array(v, n, m, m, k, v);
-          var g = new Array(k, v, v, n, m, m);
-          var b = new Array(m, m, k, v, v, n);
-          color.push(r[i], g[i], b[i], a);
-        }
-        return color;
-      }
-
-      const pos = new Array();
-      const nor = new Array();
-      const col = new Array();
-      const idx = new Array();
-      for(let i = 0; i <= row; i++){
-        const r = Math.PI * 2 / row * i;
-        const rr = Math.cos(r);
-        const ry = Math.sin(r);
-        for(let ii = 0; ii <= column; ii++){
-          const tr = Math.PI * 2 / column * ii;
-          const tx = (rr * irad + orad) * Math.cos(tr);
-          const ty = ry * irad;
-          const tz = (rr * irad + orad) * Math.sin(tr);
-          const rx = rr * Math.cos(tr);
-          const rz = rr * Math.sin(tr);
-          pos.push(tx, ty, tz);
-          nor.push(rx, ry, rz);
-          const tc = hsva(360 / column * ii, 1, 1, 1);
-          col.push(tc[0], tc[1], tc[2], tc[3]);
-        }
-      }
-      for(i = 0; i < row; i++){
-        for(ii = 0; ii < column; ii++){
-          r = (column + 1) * i + ii;
-          idx.push(r, r + column + 1, r + 1);
-          idx.push(r + column + 1, r + column + 2, r + 1);
-        }
-      }
-      return {
-        position : pos,
-        normal : nor,
-        color : col,
-        index : idx
-      };
-    },
-
-    createSphere: function(row, column, rad, color) {
-      const pos = new Array();
-      const nor = new Array();
-      const col = new Array();
-      const idx = new Array();
-      for(let i = 0; i <= row; i++){
-        const r = Math.PI / row * i;
-        const ry = Math.cos(r);
-        const rr = Math.sin(r);
-        for(let ii = 0; ii <= column; ii++){
-          const tr = Math.PI * 2 / column * ii;
-          const tx = rr * rad * Math.cos(tr);
-          const ty = ry * rad;
-          const tz = rr * rad * Math.sin(tr);
-          const rx = rr * Math.cos(tr);
-          const rz = rr * Math.sin(tr);
-          let tc;
-          if(color){
-            tc = color;
-          }else{
-            tc = hsva(360 / row * i, 1, 1, 1);
-          }
-          pos.push(tx, ty, tz);
-          nor.push(rx, ry, rz);
-          col.push(tc[0], tc[1], tc[2], tc[3]);
-        }
-      }
-      r = 0;
-      for(i = 0; i < row; i++){
-        for(ii = 0; ii < column; ii++){
-          r = (column + 1) * i + ii;
-          idx.push(r, r + 1, r + column + 2);
-          idx.push(r, r + column + 2, r + column + 1);
-        }
-      }
-      return {
-        position : pos,
-        normal : nor,
-        color : col,
-        index : idx
-      };
-    },
-  
+      
     // テクスチャを生成する関数
 	  createTexture: function(source, num){
       const gl = phina_app.gl;
       // イメージオブジェクトの生成
-      var img = new Image();
+      const img = new Image();
       
       // データのオンロードをトリガーにする
       img.onload = () => {
         // テクスチャオブジェクトの生成
-        var tex = gl.createTexture();
+        const tex = gl.createTexture();
         
         // テクスチャをバインドする
         gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -435,6 +362,50 @@ phina.namespace(function() {
       
       // イメージオブジェクトのソースを指定
       img.src = source;
+    },
+    // フレームバッファをオブジェクトとして生成する関数
+    createFramebuffer: function(width, height) {
+      const gl = phina_app.gl;
+
+      // フレームバッファの生成
+      const frameBuffer = gl.createFramebuffer();
+      
+      // フレームバッファをWebGLにバインド
+      gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
+      
+      // 深度バッファ用レンダーバッファの生成とバインド
+      const depthRenderBuffer = gl.createRenderbuffer();
+      gl.bindRenderbuffer(gl.RENDERBUFFER, depthRenderBuffer);
+      
+      // レンダーバッファを深度バッファとして設定
+      gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+      
+      // フレームバッファにレンダーバッファを関連付ける
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthRenderBuffer);
+      
+      // フレームバッファ用テクスチャの生成
+      const texture = gl.createTexture();
+      
+      // フレームバッファ用のテクスチャをバインド
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      
+      // フレームバッファ用のテクスチャにカラー用のメモリ領域を確保
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      
+      // テクスチャパラメータ
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      
+      // フレームバッファにテクスチャを関連付ける
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+      
+      // 各種オブジェクトのバインドを解除
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      
+      // オブジェクトを返して終了
+      return { frameBuffer, depthRenderBuffer, texture };
     }
   });
 
