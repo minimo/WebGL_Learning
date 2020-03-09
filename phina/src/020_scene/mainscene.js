@@ -38,7 +38,7 @@ phina.namespace(function() {
       const eLines     = true;
       const eLineStrip = false;
       const eLineLoop  = false;
-      const ePointSize = 32;
+      const ePointSize = 300;
     
       // canvasを初期化する色を設定する
       gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -81,10 +81,10 @@ phina.namespace(function() {
       // uniformLocationを配列に取得
       const uniLocation = new Array();
       uniLocation[0]  = gl.getUniformLocation(prg, 'mvpMatrix');
-      uniLocation[1]  = gl.getUniformLocation(prg, 'vertexAlpha');
+      uniLocation[1]  = gl.getUniformLocation(prg, 'pointSize');
       uniLocation[2]  = gl.getUniformLocation(prg, 'texture');
       uniLocation[3]  = gl.getUniformLocation(prg, 'useTexture');
-      
+          
           
       // 各種行列の生成と初期化
       const m = new matIV();
