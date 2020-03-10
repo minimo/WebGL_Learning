@@ -13,7 +13,7 @@ phina.namespace(function() {
         .addChildTo(this);
 
       // const canvas = glCanvas(phina_app.glCanvas);
-      // Sprite(canvas, 300, 300)
+      // Sprite(canvas, 512, 512)
       //   .setPosition(100, 100)
       //   .setScale(0.2, 0.2)
       //   .addChildTo(this);
