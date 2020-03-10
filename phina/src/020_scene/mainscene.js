@@ -34,12 +34,7 @@ phina.namespace(function() {
       // canvas とクォータニオンをグローバルに扱う
       const q = new qtnIV();
       const qt = q.identity(q.create());
-
-      const eLines     = true;
-      const eLineStrip = false;
-      const eLineLoop  = false;
-      const ePointSize = 300;
-    
+   
       // canvasを初期化する色を設定する
       gl.clearColor(0.0, 0.0, 0.0, 1.0);
       
@@ -133,7 +128,7 @@ phina.namespace(function() {
         var rad2 = (count % 720) * Math.PI / 360;
         
         // フレームバッファをバインド
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fBuffer.f);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fBuffer.frameBuffer);
         
         // フレームバッファを初期化
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -191,7 +186,7 @@ phina.namespace(function() {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cIndex);
         
         // フレームバッファに描き込んだ内容をテクスチャとして適用
-        gl.bindTexture(gl.TEXTURE_2D, fBuffer.t);
+        gl.bindTexture(gl.TEXTURE_2D, fBuffer.texture);
         
         // ライト関連
         lightDirection = [-1.0, 0.0, 0.0];
